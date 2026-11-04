@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RCR Medication Tracker — Signature & Print Test Prototype</title>
+<style>
+:root{font-family:system-ui,Arial;color:#203744;background:#eef3f5}*{box-sizing:border-box}body{margin:0}header{background:#164b60;color:white;padding:18px 22px}h1{margin:0;font-size:24px}small{opacity:.9}main{max-width:1200px;margin:auto;padding:18px}.panel{background:white;border:1px solid #d6e0e4;border-radius:12px;padding:16px;margin:12px 0}h2{margin:0 0 12px;font-size:19px}label{display:block;font-weight:600;font-size:13px;margin:6px 0}input,select,textarea{width:100%;padding:9px;border:1px solid #b8c8cf;border-radius:7px;font:inherit}textarea{min-height:60px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button,.btn{border:0;border-radius:7px;padding:10px 13px;background:#17637b;color:white;font-weight:650;cursor:pointer}button.secondary{background:#e4eef2;color:#184354}button.danger{background:#a83c36}.muted{color:#526773;font-size:13px}.warn{color:#a43c21;font-weight:700}.good{color:#176746;font-weight:700}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #dae3e6;text-align:left;padding:8px;vertical-align:top}th{background:#f1f6f8} .scroll{overflow:auto}.pill{border-radius:20px;background:#e6f1f4;padding:4px 8px;display:inline-block}.hidden{display:none}.banner{background:#fff1cf;padding:12px;border-radius:8px;color:#694800;margin-top:10px}@media print{header,.toolbar,.entry,.no-print,.banner{display:none!important}main{padding:0}.panel{border:0;padding:4px}body{background:white}input,select{border:0}table{font-size:10px}h1{font-size:18px}}
+
+.signature-pad{border:2px solid #b8c8cf;border-radius:9px;background:#fff;width:100%;height:180px;display:block;touch-action:none;cursor:crosshair}
+.signature-image{max-width:360px;width:100%;max-height:125px;object-fit:contain;object-position:left center;border-bottom:1px solid #777}
+.sign-line{border-bottom:1px solid #333;min-width:230px;height:65px;display:none}
+.signature-meta{margin-top:10px;display:flex;gap:20px;flex-wrap:wrap}
+@media print{.signature-pad,.signature-controls,.sign-editor{display:none!important}.signature-image{display:block!important}.sign-line{display:block!important}.signature-image:not([src]){display:none!important}.signature-image[src]{border-bottom:0}.signature-image[src]+.sign-line{display:none!important}.signature-meta{font-size:11px}.print-signature-section{break-inside:avoid;page-break-inside:avoid}#signaturePrintNotes{display:block!important}}
+@media print{body.wet-print #savedSignature{display:none!important}body.wet-print #wetSignatureLine{display:block!important}body.wet-print #signedAt{visibility:hidden}}
+
+#rcrPrintArea{display:none}
+.rcr-preview-controls{position:sticky;top:0;z-index:20;background:#164b60;color:white;padding:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rcr-preview-controls[hidden]{display:none!important}
+.rcr-preview-controls button{background:white;color:#164b60}
+body.rcr-preview header,body.rcr-preview main{display:none!important}
+body.rcr-preview #rcrPrintArea{display:block!important;background:#edf1f3;padding:16px;overflow-x:auto}
+body.rcr-preview .rcr-page{width:279.4mm;min-height:215.9mm;margin:0 auto 14px;padding:8mm;background:white;box-shadow:0 1px 8px #aab}
+body.rcr-preview .rcr-meta{font:12px Georgia,serif}
+body.rcr-preview .rcr-met-row,body.rcr-preview .rcr-note-row{display:flex;gap:10px;margin:5px 0}
+body.rcr-preview .rcr-field{display:flex;gap:4px;flex:1}
+body.rcr-preview .rcr-field span{border-bottom:1px solid #222;flex:1}
+body.rcr-preview .rcr-title{text-align:center;font:bold 19px Georgia,serif;margin:0 0 14px}
+body.rcr-preview .rcr-columns{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:16px}
+body.rcr-preview .rcr-table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:10px}
+body.rcr-preview .rcr-table th,body.rcr-preview .rcr-table td{border:1px solid black;padding:2px}
+body.rcr-preview .rcr-table td{height:25px}
+body.rcr-preview .rcr-footer{border-bottom:1px solid black;margin-top:16px;padding-bottom:4px}
+body.rcr-preview .rcr-disclaimer{font-size:9px;margin-top:7px}
+@media print{.rcr-preview-controls{display:none!important}}
+@media print{
+ @page{size:letter landscape;margin:6mm}
+ body.rcr-paper header,body.rcr-paper main,body.rcr-paper #rcrPreviewControls{display:none!important}
+ body.rcr-paper #rcrPrintArea{display:block!important}
+ body.rcr-paper{background:white!important;color:#000!important;margin:0!important}
+ .rcr-page{width:100%;height:198mm;box-sizing:border-box;page-break-after:always;break-after:page;display:flex;flex-direction:column;color:#000;font:9pt 'Times New Roman',serif}
+ .rcr-page:last-child{page-break-after:auto;break-after:auto}
+ .rcr-title{text-align:center;font:bold 16pt Georgia,serif;margin:0 0 5mm}
+ .rcr-meta{display:flex;flex-direction:column;gap:1.1mm;margin:0 0 1.2mm;font-weight:bold;line-height:1.2}
+ .rcr-met-row{display:flex;align-items:baseline;gap:2mm;min-height:4.2mm}
+ .rcr-field{display:flex;align-items:baseline;gap:1mm;white-space:nowrap;min-width:0}
+ .rcr-field span{display:inline-block;border-bottom:0.3mm solid #111;padding:0 1mm;min-width:15mm;min-height:3.2mm;overflow:hidden;text-overflow:ellipsis;font-weight:normal}
+ .rcr-field.flex{flex:1}.rcr-field.flex span{flex:1}
+ .rcr-note-row{display:flex;gap:2mm;margin-top:0.7mm;min-height:4.3mm;font-weight:bold}
+ .rcr-note-row .rcr-field{flex:1}
+ .rcr-columns{display:grid;grid-template-columns:1fr 1fr;gap:1.7mm;margin-top:7mm;flex:1;min-height:0}
+ .rcr-table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed;font:bold 8.4pt 'Times New Roman',serif}
+ .rcr-table th,.rcr-table td{border:0.28mm solid black!important;color:#000!important;padding:0.2mm 0.7mm;text-align:left;vertical-align:middle;overflow:hidden;word-break:normal;background:#fff!important}
+ .rcr-table th{height:9mm;line-height:1.04;font-weight:bold}
+ .rcr-table td{height:5.5mm;font:normal 8pt Arial,sans-serif}
+ .rcr-table .signcell{background:#fff!important}
+ .rcr-footer{margin-top:3mm;border-bottom:0.25mm solid black;min-height:6mm;font:bold 10pt Georgia,serif}
+ .rcr-disclaimer{font:7pt Arial,sans-serif;margin-top:1mm}
+}
+
+/* iOS AirPrint single-sheet correction: preview dimensions must not leak into print. */
+@media print {
+  @page { size: 11in 8.5in; margin: 4mm; }
+  html, body { width:auto!important; height:auto!important; margin:0!important; padding:0!important; }
+  body.rcr-preview #rcrPrintArea, body.rcr-paper #rcrPrintArea { display:block!important; padding:0!important; margin:0!important; overflow:visible!important; background:white!important; }
+  body.rcr-preview .rcr-page, body.rcr-paper .rcr-page {
+    box-sizing:border-box!important; width:100%!important; max-width:100%!important;
+    height:195mm!important; min-height:0!important; max-height:195mm!important;
+    padding:0!important; margin:0!important; box-shadow:none!important;
+    display:flex!important; flex-direction:column!important; overflow:hidden!important;
+    break-inside:avoid!important; page-break-inside:avoid!important;
+  }
+  body.rcr-preview .rcr-title, body.rcr-paper .rcr-title { font-size:14pt!important; margin:0 0 2mm!important; }
+  body.rcr-preview .rcr-meta, body.rcr-paper .rcr-meta { font-size:8pt!important; gap:0.5mm!important; line-height:1!important; margin-bottom:0!important; }
+  body.rcr-preview .rcr-met-row, body.rcr-paper .rcr-met-row { min-height:3.6mm!important; margin:0!important; gap:1mm!important; }
+  body.rcr-preview .rcr-note-row, body.rcr-paper .rcr-note-row { min-height:3.6mm!important; margin:0!important; }
+  body.rcr-preview .rcr-columns, body.rcr-paper .rcr-columns { margin-top:3mm!important; gap:1.3mm!important; min-height:0!important; flex:1!important; }
+  body.rcr-preview .rcr-table, body.rcr-paper .rcr-table { height:100%!important; font-size:7pt!important; }
+  body.rcr-preview .rcr-table th, body.rcr-paper .rcr-table th { height:6mm!important; padding:0.1mm 0.4mm!important; font-size:7pt!important; }
+  body.rcr-preview .rcr-table td, body.rcr-paper .rcr-table td { height:4.7mm!important; padding:0.1mm 0.4mm!important; font-size:7pt!important; }
+  body.rcr-preview .rcr-footer, body.rcr-paper .rcr-footer { margin-top:1.5mm!important; min-height:4mm!important; font-size:8pt!important; padding:0!important; }
+  body.rcr-preview .rcr-disclaimer, body.rcr-paper .rcr-disclaimer { margin-top:0.5mm!important; font-size:6pt!important; }
+  body.rcr-preview #rcrPreviewControls {display:none!important;}
+}
+
+/* Compact iPhone/AirPrint output: exactly one content page per 44-row sheet.
+   Avoid fixed 100% table heights that caused AirPrint to flow the footer to page two. */
+@media print {
+ @page { size: 11in 8.5in; margin: 5mm; }
+ html, body { margin:0!important; padding:0!important; width:100%!important; }
+ body.rcr-preview header, body.rcr-preview main,
+ body.rcr-paper header, body.rcr-paper main,
+ #rcrPreviewControls { display:none!important; }
+ #rcrPrintArea { display:block!important; margin:0!important; padding:0!important; }
+ .rcr-page, body.rcr-preview .rcr-page, body.rcr-paper .rcr-page {
+   width:100%!important; height:177mm!important; max-height:177mm!important;
+   min-height:0!important; padding:0!important; margin:0!important;
+   display:flex!important; flex-direction:column!important; box-shadow:none!important;
+   overflow:visible!important; break-after:page!important; page-break-after:always!important;
+ }
+ .rcr-page:last-child, body.rcr-preview .rcr-page:last-child,
+ body.rcr-paper .rcr-page:last-child { break-after:auto!important; page-break-after:auto!important; }
+ .rcr-title { font-size:12pt!important; margin:0 0 1.5mm!important; line-height:1.05!important; }
+ .rcr-meta { font-size:7.2pt!important; gap:0!important; margin:0!important; line-height:1.05!important; }
+ .rcr-met-row,.rcr-note-row { min-height:3mm!important; margin:0!important; }
+ .rcr-field span { min-height:2.5mm!important; }
+ .rcr-columns { flex:1 1 auto!important; min-height:0!important; margin-top:2mm!important; margin-bottom:0!important; }
+ .rcr-table { height:100%!important; font-size:6.4pt!important; }
+ .rcr-table th { height:5.5mm!important; font-size:6.4pt!important; padding:0 0.3mm!important; }
+ .rcr-table td { height:4.8mm!important; font-size:6.4pt!important; padding:0 0.3mm!important; }
+ .rcr-footer { margin-top:1mm!important; min-height:3mm!important; font-size:7pt!important; }
+ .rcr-disclaimer { margin-top:0.5mm!important; font-size:5.5pt!important; }
+}
+
+/* iOS AirPrint: explicitly size content below printable page bounds. Avoid
+   table 100% height inside flex, which could push the footer to a second sheet. */
+@media print {
+ @page { size: 11in 8.5in; margin: 6mm; }
+ html,body { width:auto!important;height:auto!important;overflow:visible!important; }
+ body.rcr-preview #rcrPrintArea, body.rcr-paper #rcrPrintArea {
+  position:static!important;display:block!important;overflow:visible!important;
+  width:auto!important;height:auto!important;padding:0!important;margin:0!important;
+ }
+ body.rcr-preview .rcr-page,body.rcr-paper .rcr-page,.rcr-page {
+  display:block!important;position:relative!important;overflow:visible!important;
+  box-sizing:border-box!important;width:260mm!important;max-width:260mm!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  margin:0!important;padding:0!important;box-shadow:none!important;
+  break-inside:avoid!important;page-break-inside:avoid!important;
+  page-break-after:auto!important;break-after:auto!important;
+ }
+ .rcr-title{font-size:12pt!important;line-height:1.1!important;margin:0 0 1.2mm!important}
+ .rcr-meta{margin:0!important;gap:0!important;font-size:7pt!important;line-height:1!important}
+ .rcr-met-row,.rcr-note-row{height:3.7mm!important;min-height:0!important;margin:0!important;line-height:1!important}
+ .rcr-field span{min-height:2.6mm!important}
+ .rcr-columns {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:1.7mm!important;margin:2mm 0 0!important;height:auto!important;min-height:0!important;flex:none!important;}
+ .rcr-table{table-layout:fixed!important;width:100%!important;height:auto!important;max-height:none!important;}
+ .rcr-table thead,.rcr-table tbody{height:auto!important}
+ .rcr-table tr{height:5mm!important;max-height:5mm!important;min-height:0!important}
+ .rcr-table th{height:6mm!important;max-height:6mm!important;line-height:1!important;font-size:6.4pt!important;padding:0!important}
+ .rcr-table td{height:5mm!important;max-height:5mm!important;line-height:1!important;font-size:6.4pt!important;padding:0!important}
+ .rcr-footer{margin:1.3mm 0 0!important;height:4mm!important;min-height:0!important;font-size:7pt!important;line-height:1!important}
+ .rcr-disclaimer{margin:0.5mm 0 0!important;font-size:5.5pt!important;line-height:1!important}
+}
+
+/* Original RCR paper-chart layout. Final print rules override legacy screen-print CSS. */
+body.rcr-preview #rcrPrintArea {padding:12px!important}
+body.rcr-preview .rcr-page{width:279.4mm!important;min-height:215.9mm!important;padding:7mm!important;box-sizing:border-box!important}
+body.rcr-preview .rcr-title{font:bold 17px Georgia,serif!important;margin:0 0 9px!important}
+body.rcr-preview .rcr-columns{gap:4px!important;margin-top:12px!important}
+body.rcr-preview .rcr-table th,body.rcr-preview .rcr-table td{border:1px solid #000!important}
+body.rcr-preview .rcr-table td{height:24px!important}
+body.rcr-preview .rcr-footer{font-size:11px!important;margin-top:12px!important}
+.rcr-writing-lines>div{min-height:17px;border-bottom:1px solid #000}
+@media screen and (max-width:800px){body.rcr-preview #rcrPrintArea{overflow-x:auto!important}body.rcr-preview .rcr-page{margin:0!important}}
+@media print {
+ @page {size:landscape; margin:6mm}
+ html,body {width:auto!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important}
+ body.rcr-paper > header,body.rcr-paper > main,body.rcr-paper > #rcrPreviewControls,
+ body.rcr-preview > header,body.rcr-preview > main,body.rcr-preview > #rcrPreviewControls {display:none!important}
+ body.rcr-paper > #rcrPrintArea,body.rcr-preview > #rcrPrintArea {display:block!important;position:static!important;padding:0!important;margin:0!important;overflow:visible!important;background:#fff!important;width:100%!important}
+ body.rcr-preview #rcrPrintArea .rcr-page,body.rcr-paper #rcrPrintArea .rcr-page {
+  display:block!important;box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-height:0!important;height:184mm!important;max-height:184mm!important;padding:0!important;margin:0!important;overflow:hidden!important;box-shadow:none!important;break-after:page!important;page-break-after:always!important;color:black!important;font-family:Georgia,'Times New Roman',serif!important;
+ }
+ body.rcr-preview #rcrPrintArea .rcr-page:last-child,body.rcr-paper #rcrPrintArea .rcr-page:last-child{break-after:auto!important;page-break-after:auto!important}
+ body.rcr-preview #rcrPrintArea .rcr-title,body.rcr-paper #rcrPrintArea .rcr-title{font:bold 14pt Georgia,serif!important;text-align:center!important;margin:0 0 2.5mm!important;line-height:1.15!important}
+ body.rcr-preview #rcrPrintArea .rcr-meta,body.rcr-paper #rcrPrintArea .rcr-meta{display:block!important;font:8pt Georgia,serif!important;margin:0!important;line-height:1.2!important}
+ body.rcr-preview #rcrPrintArea .rcr-met-row,body.rcr-paper #rcrPrintArea .rcr-met-row{display:flex!important;align-items:baseline!important;gap:2.5mm!important;height:5mm!important;min-height:0!important;margin:0!important}
+ body.rcr-preview #rcrPrintArea .rcr-field,body.rcr-paper #rcrPrintArea .rcr-field{display:flex!important;flex:1 1 0!important;white-space:nowrap!important;gap:1mm!important;min-width:0!important;font-weight:bold!important}
+ body.rcr-preview #rcrPrintArea .rcr-field.wide,body.rcr-paper #rcrPrintArea .rcr-field.wide{flex:2 1 0!important}
+ body.rcr-preview #rcrPrintArea .rcr-field.small,body.rcr-paper #rcrPrintArea .rcr-field.small{flex:.7 1 0!important}
+ body.rcr-preview #rcrPrintArea .rcr-field span,body.rcr-paper #rcrPrintArea .rcr-field span{flex:1 1 auto!important;min-width:0!important;min-height:0!important;border-bottom:.25mm solid #000!important;font-weight:normal!important;overflow:hidden!important;text-overflow:ellipsis!important}
+ body.rcr-preview #rcrPrintArea .rcr-columns,body.rcr-paper #rcrPrintArea .rcr-columns{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:2mm!important;margin:3mm 0 0!important;height:auto!important;min-height:0!important;max-height:none!important;flex:none!important}
+ body.rcr-preview #rcrPrintArea .rcr-table,body.rcr-paper #rcrPrintArea .rcr-table{width:100%!important;height:auto!important;max-height:none!important;table-layout:fixed!important;border-collapse:collapse!important;font-family:Georgia,serif!important;font-size:6.6pt!important}
+ body.rcr-preview #rcrPrintArea .rcr-table thead,body.rcr-preview #rcrPrintArea .rcr-table tbody,body.rcr-paper #rcrPrintArea .rcr-table thead,body.rcr-paper #rcrPrintArea .rcr-table tbody{height:auto!important}
+ body.rcr-preview #rcrPrintArea .rcr-table tr,body.rcr-paper #rcrPrintArea .rcr-table tr{height:5mm!important;max-height:5mm!important;min-height:0!important}
+ body.rcr-preview #rcrPrintArea .rcr-table th,body.rcr-paper #rcrPrintArea .rcr-table th{height:6mm!important;max-height:6mm!important;border:.25mm solid black!important;background:white!important;color:black!important;padding:.2mm!important;font:bold 6.5pt Georgia,serif!important;line-height:1.05!important;text-align:left!important}
+ body.rcr-preview #rcrPrintArea .rcr-table td,body.rcr-paper #rcrPrintArea .rcr-table td{height:5mm!important;max-height:5mm!important;border:.25mm solid black!important;background:white!important;color:black!important;padding:0 .3mm!important;font:6pt Arial,sans-serif!important;line-height:1.1!important}
+ body.rcr-preview #rcrPrintArea .rcr-footer,body.rcr-paper #rcrPrintArea .rcr-footer{font:8.5pt Georgia,serif!important;margin:2mm 0 0!important;border:0!important;height:auto!important;min-height:0!important}
+ body.rcr-preview #rcrPrintArea .rcr-writing-lines>div,body.rcr-paper #rcrPrintArea .rcr-writing-lines>div{height:5mm!important;min-height:0!important;border-bottom:.25mm solid #000!important}
+ body.rcr-preview #rcrPrintArea .rcr-disclaimer,body.rcr-paper #rcrPrintArea .rcr-disclaimer{font:5.5pt Arial,sans-serif!important;margin:1mm 0 0!important}
+}
+
+/* One-sheet Safari/AirPrint correction: original 2-column RCR chart, US Letter landscape. */
+@media print {
+ @page { size: 11in 8.5in; margin: 5mm !important; }
+ html,body { margin:0!important;padding:0!important;width:100%!important;height:auto!important;overflow:visible!important; }
+ body.rcr-preview > header, body.rcr-preview > main,body.rcr-preview > #rcrPreviewControls,
+ body.rcr-paper > header, body.rcr-paper > main,body.rcr-paper > #rcrPreviewControls {display:none!important;}
+ body.rcr-preview > #rcrPrintArea,body.rcr-paper > #rcrPrintArea {display:block!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;overflow:visible!important;}
+ body.rcr-preview #rcrPrintArea .rcr-page,body.rcr-paper #rcrPrintArea .rcr-page {
+  display:block!important;width:100%!important;max-width:100%!important;
+  height:188mm!important;min-height:0!important;max-height:188mm!important;
+  margin:0!important;padding:0!important;overflow:hidden!important;
+  box-shadow:none!important;break-inside:avoid!important;page-break-inside:avoid!important;
+  break-after:auto!important;page-break-after:auto!important;
+ }
+ body.rcr-preview #rcrPrintArea .rcr-page:not(:last-child),body.rcr-paper #rcrPrintArea .rcr-page:not(:last-child){break-after:page!important;page-break-after:always!important;}
+ body.rcr-preview #rcrPrintArea .rcr-columns,body.rcr-paper #rcrPrintArea .rcr-columns { margin-top:2mm!important;gap:1.5mm!important; }
+ body.rcr-preview #rcrPrintArea .rcr-table tr,body.rcr-paper #rcrPrintArea .rcr-table tr {height:4.6mm!important;min-height:0!important;max-height:4.6mm!important;}
+ body.rcr-preview #rcrPrintArea .rcr-table td,body.rcr-paper #rcrPrintArea .rcr-table td {height:4.6mm!important;min-height:0!important;max-height:4.6mm!important;}
+ body.rcr-preview #rcrPrintArea .rcr-table th,body.rcr-paper #rcrPrintArea .rcr-table th {height:5.5mm!important;min-height:0!important;max-height:5.5mm!important;}
+ body.rcr-preview #rcrPrintArea .rcr-writing-lines>div,body.rcr-paper #rcrPrintArea .rcr-writing-lines>div {height:4mm!important;min-height:0!important;}
+ body.rcr-preview #rcrPrintArea .rcr-footer,body.rcr-paper #rcrPrintArea .rcr-footer {margin-top:1mm!important;}
+}
+</style></head><body>
+<header><h1>Ranch Creek Recovery · Medication Tracker</h1><small>Six-bed demonstration · Medication scan assistance · One-page landscape printing</small></header>
+<main><div class="banner">DEMONSTRATION ONLY — not approved for real patient records or clinical medication administration. Data is stored unencrypted in this browser profile; no authentication, tamper-proof audit trail, or HIPAA safeguards. Use fictional test data only.</div>
+<section class="panel"><h2>Client / Bed</h2><p id="storage-status" class="warn">Checking whether this browser can save...</p><div class="grid"><div><label>Choose bed</label><select id="bed"><option value="0">Bed 1</option><option value="1">Bed 2</option><option value="2">Bed 3</option><option value="3">Bed 4</option><option value="4">Bed 5</option><option value="5">Bed 6</option></select></div><div><label>Client name (test data only)</label><input id="client" placeholder="Fictional client"></div><div><label>Client ID (test data only)</label><input id="clientid" placeholder="Test ID"></div></div><div class="toolbar"><button onclick="saveClient()">Save client for this bed</button><button class="secondary" onclick="openRcrPrint('shift')">Preview blank original chart</button><button class="secondary" onclick="openRcrPrint('updated')">Preview original chart / Print</button></div></section>
+
+<section class="panel no-print" id="medScannerPanel">
+<h2>Scan medication · barcode or prescription label</h2>
+<p class="warn">DEMO / FICTIONAL LABELS ONLY. Do not scan real patient prescription labels in this prototype. These suggestions are not orders. Verify the original prescription, patient, medication, strength, directions and count before saving.</p>
+<div class="toolbar">
+<button type="button" id="startCameraBtn" onclick="startBarcodeCamera()">Start live barcode camera</button>
+<button type="button" class="secondary" onclick="testBarcodeCamera()">Test camera permission</button>
+<button type="button" class="secondary" onclick="stopBarcodeCamera()">Stop camera</button>
+<label class="btn" style="margin:0">Take barcode photo / choose image<input type="file" accept="image/*" capture="environment" onchange="readBarcodePhoto(event)" style="display:none"></label>
+<label class="btn" style="margin:0">Single label photo (original)<input type="file" accept="image/*" capture="environment" onchange="readPrescriptionLabel(event)" style="display:none"></label>
+</div>
+<div id="cameraFeedback" style="padding:12px;background:#eaf4f8;border:2px solid #a5c4d2;border-radius:9px;margin:10px 0"><p id="scanStatus" class="muted" role="status" aria-live="polite">Start the live camera or take a clear photo of a fully visible barcode. If a barcode is covered or damaged, enter its printed code manually or use the label scanner. The camera needs Safari permission, and recognition libraries need internet access.</p><div id="barcode-reader" style="max-width:440px;display:none;margin:12px 0"></div></div>
+<div class="panel" style="background:#f5fafc;border:2px solid #aac7d4" id="cropScanner">
+<h3 style="margin-top:0">Curved-bottle scanner · Crop & review</h3>
+<p><b>1.</b> Photograph one readable section of a fictional test label. <b>2.</b> Drag the blue selection over only the text to read; drag its lower-right corner to resize. <b>3.</b> Tap <b>Read selected text</b>. Repeat for other sections.</p>
+<div class="grid">
+ <div><label>1 · Medication name</label><label class="btn">Take / retake name photo<input type="file" accept="image/*" capture="environment" onchange="cropPhotoPicked(event,'name')" style="display:none"></label></div>
+ <div><label>2 · Strength / form</label><label class="btn">Take / retake strength photo<input type="file" accept="image/*" capture="environment" onchange="cropPhotoPicked(event,'strength')" style="display:none"></label></div>
+ <div><label>3 · Directions / frequency</label><label class="btn">Take / retake directions photo<input type="file" accept="image/*" capture="environment" onchange="cropPhotoPicked(event,'directions')" style="display:none"></label></div>
+</div>
+<div class="grid">
+ <div><label for="cropSection">Photo to crop and recognize</label><select id="cropSection" onchange="cropSetSection(this.value)"><option value="name">Medication name</option><option value="strength">Strength / form</option><option value="directions">Directions</option></select></div>
+ <div><label for="cropEnhance">Image processing</label><select id="cropEnhance" onchange="cropDrawPreview()"><option value="contrast">Increase contrast</option><option value="grayscale">Grayscale</option><option value="original">Original photo</option><option value="bw">Black and white (high contrast)</option></select></div>
+</div>
+<div class="grid" style="align-items:start">
+ <div><b>Original photo — drag or resize the blue rectangle</b><div id="cropStage" style="position:relative;width:100%;margin-top:8px;touch-action:none;user-select:none;background:#dbe7ec;border:1px solid #8ca9b8;border-radius:8px;overflow:hidden;min-height:120px"><canvas id="cropOriginal" style="display:block;width:100%;height:auto"></canvas><div id="cropRectangle" style="display:none;position:absolute;border:3px solid #0874c9;background:rgba(13,127,220,.13);box-shadow:0 0 0 2000px rgba(10,30,43,.25);touch-action:none;cursor:move"><div id="cropHandle" style="position:absolute;right:-10px;bottom:-10px;width:26px;height:26px;background:#0874c9;border:3px solid white;border-radius:50%;touch-action:none"></div></div></div><p class="muted" id="cropHint">Choose a photo above. Adjust the blue box to include only the printed medication text, excluding the patient's name and other identifying details.</p></div>
+ <div><b>Selected crop & recognition — side by side</b><canvas id="cropPreview" style="display:block;width:100%;max-height:320px;object-fit:contain;background:white;border:1px solid #8ca9b8;border-radius:8px;margin-top:8px"></canvas><label for="cropRecognized">Recognized text (editable)</label><textarea id="cropRecognized" rows="5" placeholder="Tap Read selected text, then carefully correct any OCR mistakes."></textarea><p class="muted" id="cropConfidence">No text recognized yet.</p></div>
+</div>
+<div class="toolbar"><button type="button" onclick="cropReadSelected()">Read selected text</button><button type="button" class="secondary" onclick="cropResetSelection()">Reset crop box</button><button type="button" class="secondary" onclick="cropUseCorrected()">Use corrected text for this section</button><button type="button" class="secondary" onclick="cropClear()">Clear scanner photos</button></div>
+<div class="grid"><div><label for="multiText_name">Verified name text</label><textarea id="multiText_name" rows="3" placeholder="Correct and verify medication name"></textarea></div><div><label for="multiText_strength">Verified strength text</label><textarea id="multiText_strength" rows="3" placeholder="Correct and verify strength"></textarea></div><div><label for="multiText_directions">Verified directions text</label><textarea id="multiText_directions" rows="3" placeholder="Correct and verify directions"></textarea></div></div>
+<p id="multiStatus" role="status" aria-live="polite" class="muted">Choose a test-label photo to begin. The scanner does not automatically save or administer medications.</p>
+<div class="toolbar"><button type="button" onclick="combineMultiText()">Fill medication review fields from corrected label text</button></div><p id="labelTransferStatus" role="status" aria-live="polite" class="muted">Correct the extracted name, strength and directions above, then tap Fill medication review fields. No medication record is saved automatically.</p>
+<p class="warn">OCR often misreads curved labels and numbers. Verify each field against the physical label and authorized order; never guess. Do not photograph real patient-identifying labels in this public demonstration app.</p>
+</div>
+<div class="grid"><div><label for="scanCode">Scanned / manually entered barcode or NDC</label><input id="scanCode" placeholder="Scan or type product code"></div><div><label for="scanMedication">Suggested medication name</label><input id="scanMedication" placeholder="Review or enter from label"></div><div><label for="scanStrength">Suggested strength / form</label><input id="scanStrength" placeholder="Review against prescription"></div><div><label for="scanDirections">Suggested directions / frequency</label><input id="scanDirections" placeholder="Review against authorized order"></div></div>
+<div class="toolbar"><button type="button" id="ndcLookupButton" class="secondary" onclick="lookupScannedNDC()">Look up medication / NDC</button><span id="lookupInlineStatus" role="status" aria-live="polite" style="font-weight:700;display:block;min-width:100%;padding:8px 0">Ready to look up a scanned code.</span><button type="button" onclick="applyScanDraft()">Copy reviewed suggestions into medication fields</button><button type="button" class="secondary" onclick="clearScanDraft()">Clear scan</button></div>
+
+<details><summary>Review extracted label text (may contain recognition errors)</summary><textarea id="scanRaw" rows="6" placeholder="Text recognized from your test label; not saved to the medication log"></textarea></details>
+<p class="muted">A UPC/GTIN is not necessarily an NDC. A product barcode alone cannot determine resident-specific dosing, directions, prescribed quantity, or administration time. Nothing is added until you press the existing <b>Add medication to selected bed</b> button.</p>
+</section>
+<section class="panel"><h2>Medication inventory</h2><p class="warn">Existing saved entries are not automatically corrected. Review any previously scanned directions; remove an incorrect unused test medication if no activity exists. This demo cannot repair a recorded administration history.</p><div class="grid"><div><label>Medication name</label><input id="medname" placeholder="Example: Test medication"></div><div><label>Strength / form</label><input id="strength" placeholder="e.g. 10 mg tablet"></div><div><label>Directions / frequency</label><input id="directions" placeholder="As written on order"></div><div><label>Starting count</label><input id="start" type="number" min="0" step="0.001" placeholder="30"></div><div><label>Unit</label><select id="unit"><option>tablets</option><option>capsules</option><option>mL</option><option>doses</option><option>units</option><option>other</option></select></div><div><label>Low stock threshold</label><input id="threshold" type="number" min="0" step="0.001" value="5"></div></div><div class="panel" style="background:#fff8e8;border:2px solid #b87527;margin:14px 0;padding:12px" id="medVerificationPanel">
+<strong>Required review before adding medication (demo only)</strong>
+<p class="muted">OCR text is not a prescription. Verify the name, strength, complete directions (including PRN/as-needed details), unit and quantity against the actual authorized order. Incomplete or garbled instructions must be corrected, not guessed.</p>
+<label style="display:flex;gap:9px;align-items:flex-start;font-size:14px"><input id="verifyMedDetails" type="checkbox" style="width:20px;height:20px;flex:none;margin:1px 0"> I have reviewed all medication fields against the authorized order and corrected any scanning errors.</label>
+<p id="medReviewMessage" role="status" aria-live="polite" class="warn">Verification required before adding medication.</p>
+</div>
+<div class="toolbar"><button type="button" onclick="addMed()">Add medication to selected bed</button></div><div class="scroll"><table><thead><tr><th>Medication</th><th>Directions</th><th>Starting</th><th>Remaining</th><th>Status</th><th></th></tr></thead><tbody id="medrows"></tbody></table></div></section>
+<section class="panel entry"><h2>Record medication activity</h2><div class="grid"><div><label>Medication</label><select id="selectedmed"></select></div><div><label>Activity</label><select id="activity"><option value="" selected disabled>Choose an activity (required)</option><option value="admin">Administered</option><option value="received">Received / restocked</option><option value="waste">Waste / disposal</option><option value="correction">Count adjustment (signed quantity)</option><option value="held">Held / refused / not given (no deduction)</option></select></div><div><label>Date and time</label><input id="datetime" type="datetime-local"></div><div><label>Quantity</label><input id="qty" type="number" min="0" step="0.001" value="1"></div><div><label>Staff initials</label><input id="staff" maxlength="12"></div><div><label>Client initials (if applicable)</label><input id="initials" maxlength="12"></div></div><label>Reason / comments</label><textarea id="note" placeholder="Record reason for adjustment, waste, refusal, etc."></textarea><div class="toolbar"><button type="button" onclick="record()">Record activity</button></div><p class="warn" style="font-size:13px">Select an activity explicitly. “Administered” is never preselected.</p><p class="muted">An administered or wasted quantity subtracts from inventory; received stock adds to it; held/refused has no effect. Corrections require a signed adjustment such as +2 or -1. Inventory is calculated from recorded transactions.</p></section>
+<section class="panel"><h2>Medication log · <span id="bedtitle"></span></h2><div class="toolbar no-print"><button class="secondary" onclick="exportCSV()">Export CSV</button><button class="secondary" onclick="backup()">Backup all beds (JSON)</button><label class="btn" style="margin:0;cursor:pointer">Restore backup<input type="file" accept=".json,application/json" onchange="restore(event)" style="display:none"></label><button class="danger" onclick="resetAll()">Clear ALL test data</button></div><div class="scroll"><table><thead><tr><th>Date</th><th>Time</th><th>Medication</th><th>Activity</th><th>Quantity</th><th>Balance</th><th>Staff</th><th>Client</th><th>Comments</th></tr></thead><tbody id="logs"></tbody></table></div></section>
+<section class="panel no-print" id="rcrPrintSettings"><h2>RCR Medication Log — Original Uploaded Chart Printing</h2><p class="muted">Choose one medication. Prints the original photographed RCR chart layout: two sets of Date, Time, Dose, # Left, Staff, Count, Count/Initials, and taper instructions. Staff and counts must be verified independently.</p><div class="grid"><div><label for="printMedication">Medication to print</label><select id="printMedication"></select></div><div><label for="printDate">Shift date</label><input id="printDate" type="date"></div><div><label for="printShift">Shift</label><select id="printShift"><option value="all">All day (00:00–23:59)</option><option value="day">Day (07:00–18:59)</option><option value="night">Night (19:00–06:59 next day)</option></select></div><div><label for="printDOB">DOB (fictional test only)</label><input id="printDOB" placeholder="MM/DD/YYYY" autocomplete="off"></div><div><label for="printInitial">Initial dose (date and time) — test only</label><input id="printInitial" placeholder="MM/DD/YYYY HH:MM"></div><div><label for="printRx">Rx # (fictional test only)</label><input id="printRx" placeholder="Test Rx #"></div><div><label for="printSide">24-hour side effects / observations</label><input id="printSide" placeholder="Enter observed or ordered information"></div></div><label for="printChanges">Taper instructions / order changes (as documented in authorized order)</label><textarea id="printChanges" placeholder="Leave blank if none"></textarea><div class="toolbar"><button onclick="openRcrPrint('shift')">Print shift-start form (blank entries)</button><button onclick="openRcrPrint('updated')">Print updated medication log / PDF</button></div><p class="warn">Printed signatures must be obtained at the time of the actual medication event according to RCR policy. Never pre-sign blank rows. Printed reports from this demo do not replace approved clinical records.</p></section>
+<section class="panel print-signature-section"><h2>Staff signature · Selected bed</h2><p class="muted sign-editor">Sign using your finger or Apple Pencil on iPhone/iPad. This is a basic electronic image signature for a test copy, not a verified, authenticated clinical e-signature.</p>
+<div class="grid sign-editor"><div><label for="signerName">Printed staff name (test only)</label><input id="signerName" placeholder="Example: Test Staff"></div><div><label for="signerRole">Staff title / role</label><input id="signerRole" placeholder="Example: Counselor"></div></div>
+<div class="sign-editor"><label>Draw signature below</label><canvas id="signaturePad" class="signature-pad" aria-label="Draw staff signature with finger or pointer"></canvas></div>
+<div class="toolbar signature-controls"><button onclick="saveSignature()">Save digital signature for this bed</button><button class="secondary" onclick="clearSignature()">Clear signature</button><button class="secondary" onclick="printSelected()">Print selected bed / Save PDF</button><button class="secondary" onclick="printBlank()">Print for handwritten signature</button></div>
+<div id="signatureStatus" class="muted" role="status" aria-live="polite">No signature saved for this bed.</div>
+<div class="signature-meta"><div><b>Staff signature:</b><div><img class="signature-image" id="savedSignature" alt="Saved test staff signature" hidden><div id="wetSignatureLine" class="sign-line"></div></div></div><div><b>Printed name / title:</b><div id="printedSigner">________________________</div><b>Signed at:</b><div id="signedAt">________________________</div></div></div>
+<p id="signaturePrintNotes" class="muted">Test-only signature. Printed output is not a secure, verified medication administration record. Signing does not independently verify any medication activity.</p>
+</section>
+<p class="muted">Core tracking works without internet once downloaded; barcode and OCR recognition may need internet to load scanner libraries, and FDA lookup requires internet. Browser storage is device/browser-specific and may be cleared. Back up test data regularly. For actual use, have a qualified developer implement secure accounts, encryption, audit logs, controlled-substance reconciliation, and facility approval.</p></main>
+<div id="rcrPreviewControls" class="rcr-preview-controls" hidden>
+  <strong>Original RCR Medication Chart — Ready to Print</strong>
+  <button type="button" onclick="printOriginalRcrChart()">🖨️ Open iPhone Print Options</button>
+  <button type="button" onclick="closeRcrPreview()">Return to Tracker</button>
+  <span>The original chart is visible below. Tap Open iPhone Print Options, then choose US Letter and Landscape. If the print dialog does not appear, use Safari Share → Print while this preview is displayed.</span>
+</div>
+<div id="rcrPrintArea" aria-label="RCR printable medication logs"></div>
+<script>
+const KEY='rcr_med_tracker_v3';const empty=()=>({beds:Array.from({length:6},()=>({name:'',id:'',meds:[],events:[]}))});
+let db;try{db=JSON.parse(localStorage.getItem(KEY))||empty();if(!Array.isArray(db.beds)||db.beds.length!==6)db=empty()}catch{db=empty()}
+const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])), uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(db));const ok=localStorage.getItem(KEY)===JSON.stringify(db);$('storage-status').textContent=ok?'Saved in this browser. Export a backup regularly.':'Automatic saving is unavailable here. Use Backup all beds (JSON) after every session.'}catch(e){$('storage-status').textContent='Automatic saving is unavailable in this viewer. Use Backup all beds (JSON), then restore it next time.'}render()}
+function bed(){return db.beds[Number($('bed').value)]}function fmt(n){return Number(Number(n).toFixed(3))}
+function balance(m,b){return fmt(Number(m.start)+b.events.filter(e=>e.medId===m.id).reduce((s,e)=>s+Number(e.delta),0))}
+function init(){['medname','strength','directions','start','unit','threshold'].forEach(id=>$(id).addEventListener('input',()=>{$('verifyMedDetails').checked=false;$('medReviewMessage').textContent='Fields changed. Reverify all details against the authorized order.';}));$('bed').addEventListener('change',()=>{render();loadSignature()});try{const t='rcr_storage_test';localStorage.setItem(t,'ok');const ok=localStorage.getItem(t)==='ok';localStorage.removeItem(t);$('storage-status').textContent=ok?'Browser storage is available. Export backups regularly.':'Browser storage is blocked. Export a JSON backup after every session.'}catch(e){$('storage-status').textContent='This file viewer blocks browser storage. Use JSON backups, or open the app from a normal HTTPS website.'}$('datetime').value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);render();initSignature();loadSignature()}
+function saveClient(){bed().name=$('client').value.trim();bed().id=$('clientid').value.trim();persist()}
+function reviewDirectionsQuality(value){
+ const t=value.trim();
+ if(!t)return 'Directions are blank. Enter complete authorized instructions.';
+ if(t.length<14 || t.split(/\s+/).length<4)return 'Directions appear incomplete. Enter complete instructions from the order.';
+ if(/[<>»«™\[\]{}]/.test(t) || /(?:\s[-*]\s|\b(?:OCR|UNREADABLE|UNKNOWN|GARBLED)\b)/i.test(t))return 'Directions contain possible recognition errors. Correct them from the order.';
+ const letters=(t.match(/[a-z]/gi)||[]).length;
+ if(letters/t.length<0.54)return 'Directions contain unusually few letters. Review possible OCR errors.';
+ return '';
+}
+function addMed(){
+ const b=bed(),name=$('medname').value.trim(),strength=$('strength').value.trim(),directions=$('directions').value.trim(),raw=$('start').value,n=Number(raw),threshold=Number($('threshold').value);
+ const fail=msg=>{$('medReviewMessage').textContent=msg;$('medReviewMessage').className='warn';alert(msg);};
+ if(!name || !strength || !directions || raw==='' || !Number.isFinite(n) || n<0 || !Number.isFinite(threshold)||threshold<0)return fail('Enter medication name, strength, complete directions, valid starting count and threshold.');
+ const issue=reviewDirectionsQuality(directions);
+ if(issue)return fail(issue+' No medication was added.');
+ if(!$('verifyMedDetails').checked)return fail('You must review and confirm all fields against the authorized order before adding medication.');
+ if(!confirm('Confirm: you checked the medication name, strength, directions (including PRN frequency), count and unit against the authorized order for the selected DEMO bed?'))return;
+ b.meds.push({id:uid(),name,strength,directions,start:n,unit:$('unit').value,threshold});
+ $('medname').value='';$('strength').value='';$('directions').value='';$('start').value='';$('verifyMedDetails').checked=false;
+ $('medReviewMessage').textContent='Medication added to DEMO inventory after manual review. Clear old incorrect entries separately.';
+ $('medReviewMessage').className='good';persist();
+}
+function removeMed(id){const b=bed();if(b.events.some(e=>e.medId===id))return alert('This medication has recorded activity. Keep it for the audit history.');if(confirm('Delete this unused medication?')){b.meds=b.meds.filter(m=>m.id!==id);persist()}}
+function record(){const b=bed(),m=b.meds.find(m=>m.id===$('selectedmed').value),type=$('activity').value,raw=$('qty').value,n=Number(raw),when=$('datetime').value,staff=$('staff').value.trim(),note=$('note').value.trim();if(!type)return alert('Choose the medication activity explicitly before recording.');if(!m||!when||!staff||raw===''||!Number.isFinite(n)||n<0)return alert('Select medication, date/time, nonnegative quantity, and staff initials.');if(type==='admin' && reviewDirectionsQuality(m.directions||''))return alert('This medication has incomplete or possibly corrupted directions. Do not record administration. Correct the entry from the authorized order first.');if(type==='correction')return alert('For count adjustments use the dedicated signed adjustment field below.');if(['waste','held'].includes(type)&&!note)return alert('Enter a reason for this activity.');let delta=type==='received'?n:type==='held'?0:-n;if(type!=='held'&&n===0)return alert('Quantity must be greater than zero.');if(balance(m,b)+delta<0)return alert('Not enough inventory. Check the count and transaction history.');b.events.push({id:uid(),medId:m.id,type,when,qty:n,delta,staff,initials:$('initials').value.trim(),note,created:new Date().toISOString()});$('note').value='';$('activity').value='';persist()}
+function adjust(){const b=bed(),m=b.meds.find(m=>m.id===$('selectedmed').value),raw=prompt('Enter signed inventory adjustment, e.g. +2 or -1');if(raw===null)return;const delta=Number(raw);if(!m||!raw.trim()||!Number.isFinite(delta)||delta===0||balance(m,b)+delta<0)return alert('Invalid adjustment.');const reason=prompt('Required reason for adjustment:');if(!reason?.trim())return alert('Reason required.');const staff=$('staff').value.trim();if(!staff)return alert('Staff initials required.');b.events.push({id:uid(),medId:m.id,type:'correction',when:$('datetime').value||new Date().toISOString().slice(0,16),qty:Math.abs(delta),delta,staff,initials:$('initials').value.trim(),note:reason,created:new Date().toISOString()});persist()}
+function render(){const b=bed();updatePrintMeds();$('client').value=b.name;$('clientid').value=b.id;$('bedtitle').textContent=`Bed ${Number($('bed').value)+1}${b.name?' · '+b.name:''}`;const selected=$('selectedmed').value;$('selectedmed').innerHTML=b.meds.map(m=>`<option value="${esc(m.id)}">${esc(m.name)} · ${esc(m.strength)}</option>`).join('');if(b.meds.some(m=>m.id===selected))$('selectedmed').value=selected;
+$('medrows').innerHTML=b.meds.map(m=>{const bal=balance(m,b);return `<tr><td><b>${esc(m.name)}</b><br>${esc(m.strength)}</td><td>${esc(m.directions)}</td><td>${fmt(m.start)} ${esc(m.unit)}</td><td><b>${bal} ${esc(m.unit)}</b></td><td class="${bal<=m.threshold?'warn':'good'}">${bal<=m.threshold?'LOW STOCK':'OK'}</td><td><button class="secondary no-print" onclick="removeMed('${m.id}')">Remove</button></td></tr>`}).join('')||'<tr><td colspan="6">No medications for this bed yet.</td></tr>';
+let running=Object.fromEntries(b.meds.map(m=>[m.id,Number(m.start)]));const events=[...b.events].sort((a,z)=>a.when.localeCompare(z.when)||a.created.localeCompare(z.created));$('logs').innerHTML=events.map(e=>{const m=b.meds.find(m=>m.id===e.medId);running[e.medId]=fmt((running[e.medId]||0)+e.delta);return `<tr><td>${esc(e.when.slice(0,10))}</td><td>${esc(e.when.slice(11,16))}</td><td>${esc(m?.name||'Unknown')}</td><td>${esc(e.type)}</td><td>${e.delta>0?'+':''}${fmt(e.delta)} ${esc(m?.unit||'')}</td><td>${running[e.medId]}</td><td>${esc(e.staff)}</td><td>${esc(e.initials)}</td><td>${esc(e.note)}</td></tr>`}).join('')||'<tr><td colspan="9">No recorded activity.</td></tr>';
+$('activity').onchange=()=>{if($('activity').value==='correction'){alert('For count adjustments, use the dedicated adjustment control below.');$('activity').value='';}};renderSignature()}
+let signatureCtx=null, drawing=false, signedStroke=false;
+function initSignature(){
+ const c=$('signaturePad'); signatureCtx=c.getContext('2d');
+ const resize=()=>{const rect=c.getBoundingClientRect();if(!rect.width)return;const dpr=window.devicePixelRatio||1; c.width=Math.round(rect.width*dpr);c.height=Math.round(rect.height*dpr);signatureCtx.setTransform(dpr,0,0,dpr,0,0);signatureCtx.strokeStyle='#172f42';signatureCtx.lineWidth=2.2;signatureCtx.lineCap='round';signatureCtx.lineJoin='round';signedStroke=false};
+ resize();window.addEventListener('resize',resize);window.addEventListener('afterprint',()=>document.body.classList.remove('wet-print'));
+ const xy=e=>{let r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};
+ c.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;signedStroke=true;c.setPointerCapture(e.pointerId);let p=xy(e);signatureCtx.beginPath();signatureCtx.moveTo(p.x,p.y);signatureCtx.lineTo(p.x+.01,p.y+.01);signatureCtx.stroke()});
+ c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();let p=xy(e);signatureCtx.lineTo(p.x,p.y);signatureCtx.stroke()});
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])c.addEventListener(event,()=>drawing=false);
+}
+function clearPad(){const c=$('signaturePad');if(signatureCtx)signatureCtx.clearRect(0,0,c.width,c.height);signedStroke=false}
+function loadSignature(){clearPad();let s=bed().signature||{};$('signerName').value=s.name||'';$('signerRole').value=s.role||'';renderSignature()}
+function renderSignature(){let s=bed().signature||{},img=$('savedSignature');if(s.data){img.src=s.data;img.hidden=false;$('signatureStatus').textContent='Saved test signature for this bed.'}else{img.removeAttribute('src');img.hidden=true;$('signatureStatus').textContent='No signature saved for this bed.'}$('printedSigner').textContent=[s.name,s.role].filter(Boolean).join(' · ')||'________________________';$('signedAt').textContent=s.at?new Date(s.at).toLocaleString():'________________________'}
+function saveSignature(){if(!signedStroke)return alert('Please draw a signature first.');let name=$('signerName').value.trim();if(!name)return alert('Enter the printed staff name.');const c=$('signaturePad');bed().signature={name,role:$('signerRole').value.trim(),at:new Date().toISOString(),data:c.toDataURL('image/png')};persist();renderSignature();alert('Test signature saved to this browser for the selected bed.');}
+function clearSignature(){if(!confirm('Remove saved test signature for this bed?'))return;delete bed().signature;clearPad();persist();renderSignature()}
+function printSelected(){document.body.classList.remove('wet-print');window.print()}
+function printBlank(){document.body.classList.add('wet-print');window.print()}
+function download(name,content,type){const a=document.createElement('a'),u=URL.createObjectURL(new Blob([content],{type}));a.href=u;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+function backup(){download('RCR_TEST_backup_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(db,null,2),'application/json')}
+function restore(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const obj=JSON.parse(r.result);if(!Array.isArray(obj.beds)||obj.beds.length!==6||obj.beds.some(b=>!Array.isArray(b.meds)||!Array.isArray(b.events)))throw Error('Invalid backup structure');if(confirm('Replace all current test data with this backup?')){db=obj;persist()}}catch(e){alert('Backup invalid: '+e.message)}};r.readAsText(f);ev.target.value=''}
+function exportCSV(){const b=bed(),lines=[['Date','Time','Medication','Strength','Activity','Quantity change','Staff initials','Client initials','Notes']];for(const e of b.events){const m=b.meds.find(m=>m.id===e.medId);lines.push([e.when.slice(0,10),e.when.slice(11,16),m?.name||'',m?.strength||'',e.type,e.delta,e.staff,e.initials,e.note])}const csv=lines.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');download('RCR_TEST_bed_'+(Number($('bed').value)+1)+'.csv','\ufeff'+csv,'text/csv;charset=utf-8')}
+function resetAll(){if(confirm('Permanently erase ALL SIX BEDS of test data?')&&confirm('Confirm again: delete everything?')){db=empty();persist()}}
+
+// Paper medication log: matched to the user-supplied Ranch Creek Recovery form.
+// Two blocks with Date / Time / Dose / # Left / Staff / Count / Count-Initials.
+const RCR_ROWS_PER_HALF=23;
+function rcrCell(s){return esc(s??'')}
+function dateView(iso){if(!iso)return '';const [y,m,d]=iso.slice(0,10).split('-');return `${m}/${d}/${y}`}
+function rcrLogs(m,b){let running=Number(m.start),events=[...b.events].filter(e=>e.medId===m.id).sort((a,z)=>a.when.localeCompare(z.when)||String(a.created).localeCompare(String(z.created)));return events.map(e=>{running=fmt(running+Number(e.delta));return {...e,left:running}})}
+function shiftFilter(e,date,shift){const day=e.when.slice(0,10),time=e.when.slice(11,16);if(shift==='all')return day===date;if(shift==='day')return day===date&&time>='07:00'&&time<'19:00';const next=new Date(date+'T12:00:00');next.setDate(next.getDate()+1);const nxt=[next.getFullYear(),String(next.getMonth()+1).padStart(2,'0'),String(next.getDate()).padStart(2,'0')].join('-');return (day===date&&time>='19:00')||(day===nxt&&time<'07:00')}
+function paperTable(rows){const cells=Array.from({length:RCR_ROWS_PER_HALF},(_,i)=>rows[i]||null);return `<table class="rcr-table"><colgroup><col style="width:11%"><col style="width:12%"><col style="width:15%"><col style="width:12%"><col style="width:16%"><col style="width:15%"><col style="width:19%"></colgroup><thead><tr><th>Date:</th><th>Time:</th><th>Dose:</th><th># Left:</th><th>Staff:</th><th>Count:</th><th>Count /<br>Initials:</th></tr></thead><tbody>${cells.map(e=>`<tr><td>${e?dateView(e.when):''}</td><td>${e?rcrCell(e.when.slice(11,16)):''}</td><td>${e?rcrCell(e.type==='admin'?fmt(e.qty):e.type+' '+fmt(e.qty)):''}</td><td>${e?rcrCell(e.left):''}</td><td>${e?rcrCell(e.staff):''}</td><td></td><td></td></tr>`).join('')}</tbody></table>`}
+function rcrPrintPage(b,m,rows,mode,pageNum,total,date,shift){const left=rows.slice(0,RCR_ROWS_PER_HALF),right=rows.slice(RCR_ROWS_PER_HALF,2*RCR_ROWS_PER_HALF);return `<div class="rcr-page">
+<div class="rcr-title">Ranch Creek Recovery Medication Log</div>
+<div class="rcr-meta">
+<div class="rcr-met-row"><div class="rcr-field wide">Client Name: <span>${rcrCell(b.name)}</span></div><div class="rcr-field">DOB: <span>${rcrCell($('printDOB').value)}</span></div><div class="rcr-field small">ID#: <span>${rcrCell(b.id)}</span></div><div class="rcr-field">Date: <span>${dateView(date)}</span></div><div class="rcr-field small">Quantity: <span>${rcrCell(fmt(m.start))} ${rcrCell(m.unit)}</span></div></div>
+<div class="rcr-met-row"><div class="rcr-field wide">Medication Name: <span>${rcrCell(m.name)}</span></div><div class="rcr-field">MG: <span>${rcrCell(m.strength)}</span></div><div class="rcr-field wide">Rx #: <span>${rcrCell($('printRx').value)}</span></div></div>
+<div class="rcr-met-row"><div class="rcr-field wide">Administration Directions: <span>${rcrCell(m.directions)}</span></div></div>
+<div class="rcr-met-row"><div class="rcr-field wide">Initial Dose (date and time): <span>${rcrCell($('printInitial').value)}</span></div><div class="rcr-field wide">24 Hour Side Effects: <span>${rcrCell($('printSide').value)}</span></div></div>
+</div>
+<div class="rcr-columns">${paperTable(left)}${paperTable(right)}</div>
+<div class="rcr-footer"><b>Taper Instructions or Order Changes:</b><div class="rcr-writing-lines"><div>${rcrCell($('printChanges').value)}</div><div></div><div></div></div></div>
+<div class="rcr-disclaimer">DEMONSTRATION FORM — fictional information only · ${pageNum} of ${total} · Counts and staff entries require independent verification.</div>
+</div>`}
+function printOriginalRcrChart(){
+ if(!document.body.classList.contains('rcr-preview')){alert('Open the original chart preview first.');return;}
+ window.print();
+}
+function openRcrPrint(mode){const b=bed();const m=b.meds.find(m=>m.id===$('printMedication').value)||{id:'blank',name:'',strength:'',directions:'',start:'',unit:'',events:[]};const date=$('printDate').value||new Date().toISOString().slice(0,10);const shift=$('printShift').value;
+ const logged=mode==='updated'?rcrLogs(m,b).filter(e=>shiftFilter(e,date,shift)).map(e=>({...e,unit:m.unit})):[];
+ const chunks=[];if(!logged.length)chunks.push([]);else for(let i=0;i<logged.length;i+=2*RCR_ROWS_PER_HALF)chunks.push(logged.slice(i,i+2*RCR_ROWS_PER_HALF));
+ $('rcrPrintArea').innerHTML=chunks.map((chunk,i)=>rcrPrintPage(b,m,chunk,mode,i+1,chunks.length,date,shift)).join('');document.body.classList.add('rcr-paper');
+ // On iPhone the native print snapshot may run after the page switches back,
+ // causing the application screen to be printed instead of this report.
+ // Open a dedicated, independently printable document instead.
+ $('rcrPreviewControls').hidden=false;
+ document.body.classList.add('rcr-preview');
+ window.scrollTo(0,0);
+
+}
+function closeRcrPreview(){
+ document.body.classList.remove('rcr-paper','rcr-preview');
+ $('rcrPreviewControls').hidden=true;
+ $('rcrPrintArea').innerHTML='';
+}
+window.addEventListener('afterprint',()=>{});
+function rcrPrintDefaults(){const day=new Date();const tz=new Date(day.getTime()-day.getTimezoneOffset()*60000);$('printDate').value=tz.toISOString().slice(0,10)}
+function updatePrintMeds(){const b=bed(),cur=$('printMedication').value;$('printMedication').innerHTML=b.meds.map(m=>`<option value="${esc(m.id)}">${esc(m.name)} · ${esc(m.strength)}</option>`).join('');if(b.meds.some(m=>m.id===cur))$('printMedication').value=cur}
+
+rcrPrintDefaults();init();
+
+// Scan assistance: this code leaves the RCR print layout and medication-record functions unchanged.
+let medBarcodeScanner=null;
+let barcodeCameraStarting=false;
+let barcodeReadAlready=false;
+function scanMessage(msg,bad=false){const e=$('scanStatus');e.textContent=msg;e.className=bad?'warn':'muted';e.style.fontSize='16px';e.style.fontWeight='700';e.style.margin='0 0 8px';}
+// A failed CDN load must be removed: otherwise the second CDN silently hangs.
+function loadBrowserScript(url,id){return new Promise((resolve,reject)=>{
+ if(window[id])return resolve();
+ const old=document.querySelector('script[data-scan-lib="'+id+'"]');
+ if(old&&old.dataset.state==='loaded')return resolve();
+ if(old&&old.dataset.state==='loading'){
+  old.addEventListener('load',()=>resolve(),{once:true});
+  old.addEventListener('error',()=>reject(new Error('Library could not load')),{once:true});return;
+ }
+ if(old)old.remove();
+ const el=document.createElement('script');el.dataset.scanLib=id;el.dataset.state='loading';el.src=url;
+ el.onload=()=>{el.dataset.state='loaded';window[id]?resolve():reject(new Error('Scanner library loaded but did not initialize'));};
+ el.onerror=()=>{el.dataset.state='failed';el.remove();reject(new Error('Scanner library download failed'));};
+ document.head.appendChild(el);
+});}
+async function barcodeLib(){
+ if(window.Html5Qrcode)return;
+ try{await loadBrowserScript('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js','Html5Qrcode');}
+ catch(e){await loadBrowserScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js','Html5Qrcode');}
+ if(!window.Html5Qrcode)throw new Error('The barcode reader could not load. Check your internet connection.');
+}
+function barcodeFound(value){
+ if(barcodeReadAlready)return;
+ barcodeReadAlready=true;
+ $('scanCode').value=String(value).trim();
+ scanMessage('Barcode recognized: '+value+'. Verify the number. Tap “Look up medication” only when the code is a verified NDC.');
+ // Stop only after camera.start has fully resolved.
+ if(!barcodeCameraStarting)void stopBarcodeCamera();
+}
+// Request permission directly from the tap gesture; Safari may not permit a late request
+// after loading a remote script. Keep a visible video during native camera checks.
+let cameraPreviewStream=null, nativeBarcodeTimer=null;
+async function testBarcodeCamera(){
+ scanMessage('Camera button responded. Requesting permission…');
+ $('cameraFeedback').scrollIntoView({behavior:'smooth',block:'start'});
+ if(!navigator.mediaDevices?.getUserMedia){scanMessage('This browser does not expose camera access. Open the HTTPS page in Safari, not an in-app browser.',true);return;}
+ try{
+  const stream=navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+  const s=await stream;
+  s.getTracks().forEach(t=>t.stop());
+  scanMessage('Camera permission is working. Now tap Start live barcode camera.');
+ }catch(e){scanMessage('Camera permission failed: '+(e.name||'Error')+' — '+(e.message||'')+'. Check Settings → Safari → Camera and allow access.',true);}
+}
+async function startBarcodeCamera(){
+ if(barcodeCameraStarting)return;
+ barcodeCameraStarting=true;
+ barcodeReadAlready=false;
+ const btn=document.getElementById('startCameraBtn');
+ if(btn)btn.disabled=true;
+ scanMessage('Camera button responded. Opening camera…');
+ $('cameraFeedback').scrollIntoView({behavior:'smooth',block:'start'});
+ let initialStream=null;
+ try{
+  if(!window.isSecureContext)throw Error('This page must be opened through the HTTPS GitHub Pages link in Safari.');
+  if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera access is unavailable. Open in Safari rather than the GitHub preview or an in-app browser.');
+  // DO NOT await library/network calls before the initial camera permission request.
+  const pendingStream=navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
+  initialStream=await pendingStream;
+  cameraPreviewStream=initialStream;
+  const box=$('barcode-reader');
+  box.style.display='block';
+  box.innerHTML='<video id="rcrCameraPreview" autoplay muted playsinline style="width:100%;border-radius:8px;background:#000"></video>';
+  const video=$('rcrCameraPreview');
+  video.srcObject=initialStream;
+  await video.play().catch(()=>{});
+  scanMessage('Camera open. Loading barcode reader… Keep the full barcode visible.');
+  // Use native detector when available. The video remains visible during detection.
+  if('BarcodeDetector' in window){
+    try{
+      const formats=await BarcodeDetector.getSupportedFormats();
+      const supported=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix'].filter(f=>formats.includes(f));
+      if(supported.length){
+        const detector=new BarcodeDetector({formats:supported});
+        nativeBarcodeTimer=setInterval(async()=>{
+          if(barcodeReadAlready||!cameraPreviewStream||video.readyState<2)return;
+          try{const hits=await detector.detect(video);if(hits.length){barcodeFound(hits[0].rawValue);await stopBarcodeCamera(true);scanMessage('Barcode recognized. Verify the number before lookup.');}}catch(e){}
+        },250);
+        scanMessage('Camera scanning. Hold the uncovered barcode steady in the frame.');
+        initialStream=null;
+        return;
+      }
+    }catch(e){}
+  }
+  // Legacy browsers: library fallback once permission has already been obtained.
+  await barcodeLib();
+  initialStream.getTracks().forEach(t=>t.stop());
+  initialStream=null;
+  cameraPreviewStream=null;
+  box.innerHTML='';
+  medBarcodeScanner=new Html5Qrcode('barcode-reader');
+  await medBarcodeScanner.start({facingMode:'environment'},
+   {fps:10,qrbox:(w,h)=>({width:Math.max(110,Math.min(300,Math.floor(w*.84))),height:Math.max(80,Math.min(160,Math.floor(h*.38)))})},
+   barcodeFound,()=>{});
+  scanMessage(barcodeReadAlready?'Barcode recognized. Verify the number.':'Camera active. Hold the whole, uncovered barcode steady.');
+ }catch(e){
+  scanMessage('Camera could not start: '+(e.name||'Error')+' — '+(e.message||e)+'. Try Test camera permission or Take barcode photo.',true);
+  if(initialStream)initialStream.getTracks().forEach(t=>t.stop());
+  await stopBarcodeCamera(true);
+ }finally{
+  barcodeCameraStarting=false;
+  if(btn)btn.disabled=false;
+  if(barcodeReadAlready)await stopBarcodeCamera(true);
+ }
+}
+async function stopBarcodeCamera(quiet=false){
+ if(nativeBarcodeTimer){clearInterval(nativeBarcodeTimer);nativeBarcodeTimer=null;}
+ if(cameraPreviewStream){cameraPreviewStream.getTracks().forEach(t=>t.stop());cameraPreviewStream=null;}
+ const scanner=medBarcodeScanner;medBarcodeScanner=null;
+ if(scanner){try{if(scanner.isScanning)await scanner.stop();}catch(e){}try{scanner.clear()}catch(e){}}
+ const box=$('barcode-reader');box.style.display='none';box.innerHTML='';
+ if(!quiet)scanMessage('Camera stopped. You can try a barcode photo or type a code manually.');
+}
+async function nativeBarcodePhoto(file){
+ if(!('BarcodeDetector' in window))return '';
+ try{
+  const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','data_matrix','qr_code']});
+  const bitmap=await createImageBitmap(file);
+  try{const hits=await detector.detect(bitmap);return hits[0]?.rawValue||'';}finally{bitmap.close?.();}
+ }catch(e){return '';}
+}
+async function readBarcodePhoto(ev){
+ const file=ev.target.files?.[0];if(!file)return;
+ scanMessage('Analyzing barcode photograph…');
+ try{
+  await stopBarcodeCamera(true);
+  let found=await nativeBarcodePhoto(file);
+  if(!found){
+   await barcodeLib();
+   $('barcode-reader').style.display='block';
+   const scanner=new Html5Qrcode('barcode-reader');
+   try{found=await scanner.scanFile(file,true);}finally{try{scanner.clear()}catch(e){}$('barcode-reader').style.display='none';}
+  }
+  if(!found)throw Error('No barcode detected');
+  $('scanCode').value=String(found).trim();
+  scanMessage('Barcode photo recognized: '+found+'. Verify the code. A UPC or GTIN is not automatically a medication NDC.');
+ }catch(e){
+  scanMessage('Barcode photo not recognized. Photograph the entire exposed barcode straight-on with even lighting, or manually enter its printed number. '+(e?.message||''),true);
+ }finally{ev.target.value='';$('barcode-reader').style.display='none';}
+}
+// Medication lookup: never treat a UPC/GTIN as automatically equivalent to an NDC.
+function ndcLookupCandidates(raw){
+ const code=raw.replace(/\s/g,''); const digits=code.replace(/[^0-9]/g,'');
+ const candidates=[];const seen=new Set();
+ function add(field,value,reason){const id=field+'|'+value;if(!value||seen.has(id))return;seen.add(id);candidates.push({field,value,reason});}
+ // Exact, explicitly printed NDC is the strongest match.
+ if(/^\d{4,5}-\d{3,4}-\d{1,2}$/.test(code)){
+   add('packaging.package_ndc',code,'printed package NDC');
+   const parts=code.split('-');add('product_ndc',parts.slice(0,2).join('-'),'printed product NDC');
+ }
+ if(/^\d{4,5}-\d{3,4}$/.test(code))add('product_ndc',code,'printed product NDC');
+ if(/^\d{10,11}$/.test(digits)){
+  add('packaging.package_ndc',digits,'exact NDC digits');
+  add('product_ndc',digits,'exact NDC digits');
+ }
+ // A common normalized 11-digit billing NDC uses 5-4-2. Determine the
+ // *possible* original FDA package-NDC spellings. Validate any returned
+ // record against the exact candidate, and reject ambiguous matches.
+ if(/^\d{11}$/.test(digits)){
+  const l=digits.slice(0,5),p=digits.slice(5,9),k=digits.slice(9,11);
+  const forms=[];
+  if(l.startsWith('0'))forms.push(l.slice(1)+'-'+p+'-'+k);
+  if(p.startsWith('0'))forms.push(l+'-'+p.slice(1)+'-'+k);
+  if(k.startsWith('0'))forms.push(l+'-'+p+'-'+k.slice(1));
+  forms.forEach(x=>add('packaging.package_ndc',x,'11-digit NDC interpretation requiring confirmation'));
+ }
+ // UPC/GTIN searches are distinct. Do NOT strip GTIN check digits and guess an NDC.
+ if(/^\d{12,14}$/.test(digits)){
+  add('openfda.upc',digits,'UPC/GTIN listing');
+  if(digits.length===14&&digits.startsWith('00'))add('openfda.upc',digits.slice(2),'UPC encoded in a 14-digit container');
+ }
+ return candidates;
+}
+function lookupFeedback(message,bad=false){
+ const el=document.getElementById('lookupInlineStatus');if(el){el.textContent=message;el.style.color=bad?'#a43c21':'#176746';}
+ scanMessage(message,bad);
+}
+async function lookupScannedNDC(){
+ const code=$('scanCode').value.trim();
+ lookupFeedback('Lookup button tapped. Checking barcode…');
+ if(!code){lookupFeedback('No number present. Scan or type a barcode first.',true);return;}
+ const candidates=ndcLookupCandidates(code);
+ if(!candidates.length){lookupFeedback('Barcode '+code+' cannot be verified as an NDC using these formats. Check the printed NDC on the medication package.',true);return;}
+ const btn=document.getElementById('ndcLookupButton');
+ if(btn){btn.disabled=true;btn.textContent='Searching FDA…';}
+ const hits=[],errors=[];
+ try{
+  // Search in parallel with a 6-second overall deadline instead of serial nine-second attempts.
+  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),6000);
+  try{
+   await Promise.all(candidates.map(async c=>{
+    const query=encodeURIComponent(c.field+':"'+c.value+'"');
+    try{
+     const resp=await fetch('https://api.fda.gov/drug/ndc.json?search='+query+'&limit=10',{signal:controller.signal});
+     if(resp.status===404)return;
+     if(!resp.ok){errors.push('FDA returned '+resp.status);return;}
+     const data=await resp.json();
+     for(const item of data.results||[]){
+      const digit=x=>String(x||'').replace(/[^0-9]/g,'');
+      const packageMatch=(item.packaging||[]).some(p=>digit(p.package_ndc)===digit(c.value));
+      const productMatch=digit(item.product_ndc)===digit(c.value);
+      const upcMatch=(item.openfda?.upc||[]).some(v=>String(v)===c.value);
+      if((c.field==='packaging.package_ndc'&&packageMatch)||(c.field==='product_ndc'&&productMatch)||(c.field==='openfda.upc'&&upcMatch))hits.push({item,c});
+     }
+    }catch(e){errors.push(e.name==='AbortError'?'FDA request timed out':String(e.message||e));}
+   }));
+  }finally{clearTimeout(timeout);}
+  const distinct=new Map();for(const h of hits){const key=h.item.product_ndc||h.item.product_id||JSON.stringify(h.item);if(!distinct.has(key))distinct.set(key,h);}
+  const matches=[...distinct.values()];
+  if(matches.length===1){
+   const item=matches[0].item;
+   $('scanMedication').value=item.brand_name||item.generic_name||'';
+   $('scanStrength').value=[(item.active_ingredients||[]).map(v=>v.strength).filter(Boolean).join(', '),item.dosage_form].filter(Boolean).join(' · ');
+   lookupFeedback('FDA match found: '+($('scanMedication').value||'product')+'. Verify product, strength and package before copying fields.');
+   $('scanMedication').scrollIntoView({block:'center',behavior:'smooth'});
+  }else if(matches.length>1){lookupFeedback('Multiple possible FDA matches. No fields changed; enter the exact printed NDC to disambiguate.',true);}
+  else if(errors.length){lookupFeedback('No confirmed FDA match. Network or API issue: '+[...new Set(errors)].join('; ')+'. Check connection or enter information manually.',true);}
+  else{lookupFeedback('No exact FDA NDC listing matched '+code+'. Scanned codes can be UPC/GTIN or pharmacy-specific barcodes. Use printed NDC or manual entry.',true);}
+ }catch(e){lookupFeedback('Lookup error: '+String(e.message||e),true);}
+ finally{if(btn){btn.disabled=false;btn.textContent='Look up medication / NDC';}}
+}
+function parseLabelText(raw){
+ // Conservative draft suggestions: no patient names, dates, RX numbers or quantities.
+ const lines=raw.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+ const result={med:'',strength:'',directions:''};
+ const units='(?:MG|MCG|G|ML|UNITS?)';
+ const medLine=lines.find(x=>/\b(?:hydroxyzine|metoprolol|amoxicillin|gabapentin|sertraline|lisinopril|ibuprofen)\b/i.test(x)) ||
+   lines.find(x=>new RegExp('\\b\\d+(?:\\.\\d+)?\\s*'+units+'\\b','i').test(x) && !/take|directions|quantity|refills|every|hours/i.test(x));
+ if(medLine){
+  const medText=medLine.replace(/^\s*(?:\d{1,4}\s+)?/,'').replace(/^(?:DRUG|MEDICATION|GENERIC|NAME)\s*:\s*/i,'');
+  const match=medText.match(/\b(\d+(?:\.\d+)?)\s*(MG|MCG|G|ML|UNITS?)\b/i);
+  if(match){
+    result.med=medText.slice(0,match.index).trim().replace(/\s+(?:PA|HCL|SUCC|ER|CAP|TAB)$/i,m=>m); 
+    const form=medText.slice(match.index+match[0].length).match(/\b(?:CAPSULES?|CAPS?|TABS?|TABLETS?|SOLUTION|SUSPENSION|CREAM)\b/i);
+    result.strength=match[1]+' '+match[2].toLowerCase()+(form?' '+form[0]:'');
+  }else result.med=medText;
+  result.med=result.med.replace(/[^a-zA-Z0-9 -]/g,' ').replace(/\s+/g,' ').trim();
+ }
+ const directionsStart=lines.findIndex(x=>/\b(?:TAKE|APPLY|INHALE|INJECT|PLACE|DISSOLVE)\b/i.test(x));
+ if(directionsStart>=0){
+  const picked=[];
+  for(let i=directionsStart;i<Math.min(lines.length,directionsStart+5);i++){
+   if(i>directionsStart && /^(?:RX|REFILL|QTY|QUANTITY|NDC|FILLED|PHARMACY|PRESCRIBER|LOT|EXP|CAUTION|WARNING|GENERIC)/i.test(lines[i]))break;
+   picked.push(lines[i]);
+   if(/\b(?:AS NEEDED|PRN)\b/i.test(lines[i]))break;
+  }
+  result.directions=picked.join(' ').replace(/\s+/g,' ').trim();
+ }
+ return result;
+}
+function renderLabelSuggestions(parts,source){
+ const map=[['med','scanMedication'],['strength','scanStrength'],['directions','scanDirections']];
+ let count=0;
+ for(const [key,id] of map){const value=(parts[key]||'').trim();$(id).value=value;if(value)count++;}
+ const msg=count?('Read '+count+' possible medication field'+(count===1?'':'s')+' from '+source+'. These are UNVERIFIED suggestions; correct every field against the actual label and authorized order. Nothing saved to inventory.'):'Text was detected, but no reliable medication fields were identified. Review the photo and enter information manually.';
+ scanMessage(msg,!count);
+ $('labelTransferStatus').textContent=msg;
+ $('labelTransferStatus').className=count?'good':'warn';
+ $('scanMedication').scrollIntoView({block:'center',behavior:'smooth'});
+}
+function rotateLabelCanvas(image,degrees){
+ const angle=degrees*Math.PI/180,vertical=degrees%180!==0;
+ const c=document.createElement('canvas');c.width=vertical?image.height:image.width;c.height=vertical?image.width:image.height;
+ const ctx=c.getContext('2d');ctx.translate(c.width/2,c.height/2);ctx.rotate(angle);ctx.drawImage(image,-image.width/2,-image.height/2);
+ return c;
+}
+async function readPrescriptionLabel(ev){
+ const file=ev.target.files?.[0];if(!file)return;
+ scanMessage('Reading label photo; checking text orientation…');
+ let worker=null,bitmap=null;
+ try{
+  await loadBrowserScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js','Tesseract');
+  bitmap=await createImageBitmap(file);
+  worker=await Tesseract.createWorker('eng');
+  await worker.setParameters({tessedit_pageseg_mode:3});
+  const candidates=[];
+  for(const angle of [0,90,270,180]){
+   scanMessage('Analyzing label orientation '+angle+'°…');
+   const canvas=rotateLabelCanvas(bitmap,angle);
+   const res=await worker.recognize(canvas);
+   const raw=(res?.data?.text||'').trim();
+   const p=parseLabelText(raw);
+   const score=(p.med?4:0)+(p.strength?3:0)+(p.directions?4:0)+(/\bTAKE\b/i.test(raw)?2:0)+(/\bMG\b/i.test(raw)?1:0)+(res?.data?.confidence||0)/100;
+   candidates.push({angle,raw,parts:p,score});
+   if(score>=13)break;
+  }
+  candidates.sort((a,b)=>b.score-a.score);
+  const best=candidates[0];
+  if(!best?.raw)throw Error('No readable label text was recognized');
+  // Do not persist scan data to resident records; raw OCR remains in editable on-screen review only.
+  $('scanRaw').value=best.raw;
+  renderLabelSuggestions(best.parts,'a '+best.angle+'° rotated photo');
+ }catch(e){scanMessage('Label read failed: '+(e.message||e)+'. Try a clear photo or type verified details manually.',true);}
+ finally{if(worker)try{await worker.terminate()}catch(e){} if(bitmap)bitmap.close?.();ev.target.value='';}
+}
+function applyScanDraft(){const name=$('scanMedication').value.trim(),strength=$('scanStrength').value.trim(),directions=$('scanDirections').value.trim();if(!name)return scanMessage('Enter and verify a medication name before copying.',true);if(!confirm('Have you checked the medication name, strength and directions against the source label AND the authorized order? This only copies draft fields; it does not save a medication.'))return;$('medname').value=name;$('strength').value=strength;$('directions').value=directions;$('verifyMedDetails').checked=false;$('medReviewMessage').textContent='Scan suggestions copied. Verify complete instructions and check the review box before adding.';scanMessage('Reviewed suggestions copied into the existing inventory form. Check the selected bed, starting count and unit, then use Add medication to selected bed when appropriate.');$('medname').scrollIntoView({behavior:'smooth',block:'center'});}
+function clearScanDraft(){['scanCode','scanMedication','scanStrength','scanDirections','scanRaw'].forEach(x=>$(x).value='');stopBarcodeCamera();scanMessage('Scan suggestions cleared.');}
+
+
+// Interactive cropping for curved-bottle test labels. Photo data remains in browser memory only.
+const cropParts=['name','strength','directions'];
+const cropImages={name:null,strength:null,directions:null};
+const cropRects={};
+let cropActive='name',cropWorkerBusy=false,cropDrag=null;
+function multiMsg(t,bad=false){const e=$('multiStatus');e.textContent=t;e.className=bad?'warn':'muted'}
+function cropClamp(n,min,max){return Math.min(max,Math.max(min,n))}
+function cropSetSection(k){
+ if(!cropParts.includes(k))return;
+ cropActive=k;$('cropSection').value=k;$('cropRecognized').value='';$('cropConfidence').textContent='Review the selected photo; select text and tap Read selected text.';
+ cropDrawOriginal();cropDrawPreview();
+}
+async function cropPhotoPicked(ev,k){
+ const file=ev.target.files?.[0];if(!file)return;
+ try{
+  const im=await createImageBitmap(file);
+  if(cropImages[k])cropImages[k].close();
+  cropImages[k]=im;cropRects[k]={x:.07,y:.15,w:.86,h:.5};
+  cropSetSection(k);
+  multiMsg('Photo loaded. Drag the blue crop box to the desired words. Resize using the blue circular handle, then tap Read selected text.');
+ }catch(err){multiMsg('Could not load photo: '+err.message,true)}finally{ev.target.value=''}
+}
+function cropDrawOriginal(){
+ const im=cropImages[cropActive],canvas=$('cropOriginal'),rect=$('cropRectangle');
+ if(!im){canvas.width=480;canvas.height=220;let c=canvas.getContext('2d');c.fillStyle='#e5eef2';c.fillRect(0,0,480,220);c.fillStyle='#47616f';c.font='20px system-ui';c.fillText('Take a photo to crop',95,110);rect.style.display='none';return}
+ const scale=Math.min(1,900/im.width);
+ canvas.width=Math.round(im.width*scale);canvas.height=Math.round(im.height*scale);
+ canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);rect.style.display='block';cropShowRect();
+}
+function cropShowRect(){
+ const r=cropRects[cropActive],box=$('cropRectangle');if(!r)return;
+ box.style.left=(r.x*100)+'%';box.style.top=(r.y*100)+'%';box.style.width=(r.w*100)+'%';box.style.height=(r.h*100)+'%';
+}
+function cropBuildCanvas(){
+ const im=cropImages[cropActive],r=cropRects[cropActive];if(!im||!r)return null;
+ const sx=Math.round(r.x*im.width),sy=Math.round(r.y*im.height),sw=Math.max(1,Math.round(r.w*im.width)),sh=Math.max(1,Math.round(r.h*im.height));
+ const scale=Math.min(3.5,Math.max(1,2100/sw));
+ const c=document.createElement('canvas');c.width=Math.min(3600,Math.round(sw*scale));c.height=Math.min(3200,Math.round(sh*scale));
+ const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.fillStyle='white';ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
+ const mode=$('cropEnhance').value;
+ if(mode!=='original'){
+  const p=ctx.getImageData(0,0,c.width,c.height),d=p.data;
+  for(let i=0;i<d.length;i+=4){let grey=Math.round(.299*d[i]+.587*d[i+1]+.114*d[i+2]);
+   if(mode==='contrast'){for(let j=0;j<3;j++)d[i+j]=cropClamp((d[i+j]-125)*1.5+135,0,255)}
+   else {grey=mode==='bw'?(grey>155?255:0):grey;d[i]=grey;d[i+1]=grey;d[i+2]=grey;}
+  }ctx.putImageData(p,0,0);
+ }
+ return c;
+}
+function cropDrawPreview(){const c=cropBuildCanvas(),preview=$('cropPreview');if(!c){preview.width=400;preview.height=100;preview.getContext('2d').clearRect(0,0,400,100);return}preview.width=c.width;preview.height=c.height;preview.getContext('2d').drawImage(c,0,0)}
+function cropResetSelection(){if(!cropImages[cropActive])return;cropRects[cropActive]={x:.07,y:.15,w:.86,h:.5};cropShowRect();cropDrawPreview()}
+(function initCropPointer(){
+ const stage=$('cropStage'),handle=$('cropHandle'),rect=$('cropRectangle');
+ function at(ev){const b=stage.getBoundingClientRect();return{x:cropClamp((ev.clientX-b.left)/b.width,0,1),y:cropClamp((ev.clientY-b.top)/b.height,0,1)}}
+ stage.addEventListener('pointerdown',ev=>{
+  if(!cropImages[cropActive])return;
+  const p=at(ev),r=cropRects[cropActive];
+  const mode=ev.target===handle?'resize':ev.target===rect?'move':'new';
+  cropDrag={mode,start:p,base:{...r}};
+  if(mode==='new'){cropRects[cropActive]={x:p.x,y:p.y,w:.04,h:.04}}
+  stage.setPointerCapture(ev.pointerId);ev.preventDefault();
+ });
+ stage.addEventListener('pointermove',ev=>{
+  if(!cropDrag)return;
+  const p=at(ev),d=cropDrag,b=d.base;let r=cropRects[cropActive];
+  if(d.mode==='move'){r.x=cropClamp(b.x+p.x-d.start.x,0,1-b.w);r.y=cropClamp(b.y+p.y-d.start.y,0,1-b.h);r.w=b.w;r.h=b.h}
+  else if(d.mode==='resize'){r.w=cropClamp(b.w+p.x-d.start.x,.06,1-b.x);r.h=cropClamp(b.h+p.y-d.start.y,.05,1-b.y)}
+  else{r.x=Math.min(d.start.x,p.x);r.y=Math.min(d.start.y,p.y);r.w=cropClamp(Math.abs(p.x-d.start.x),.04,1-r.x);r.h=cropClamp(Math.abs(p.y-d.start.y),.04,1-r.y)}
+  cropShowRect();ev.preventDefault();
+ });
+ function done(){if(!cropDrag)return;cropDrag=null;cropDrawPreview()}
+ stage.addEventListener('pointerup',done);stage.addEventListener('pointercancel',done);
+})();
+async function cropReadSelected(){
+ if(cropWorkerBusy){multiMsg('OCR is already running.',true);return}
+ const c=cropBuildCanvas();if(!c){multiMsg('Take a photo first.',true);return}
+ cropWorkerBusy=true;multiMsg('Reading only the selected crop…');let worker=null;
+ try{
+  await loadBrowserScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js','Tesseract');
+  worker=await Tesseract.createWorker('eng');
+  // Page segmentation single block to reduce noise from unrelated areas.
+  await worker.setParameters({tessedit_pageseg_mode:6,preserve_interword_spaces:'1'});
+  const res=await worker.recognize(c);const t=(res?.data?.text||'').trim();
+  $('cropRecognized').value=t;
+  const confidence=res?.data?.confidence;
+  $('cropConfidence').textContent=Number.isFinite(confidence)?'OCR confidence estimate: '+Math.round(confidence)+'%. This is NOT a guarantee of medication accuracy.':'OCR result requires manual verification.';
+  multiMsg(t?'Text recognized. Compare against the adjacent original photo and correct every error. Tap Use corrected text for this section.':'No legible text recognized. Adjust the crop or processing and try again.',!t);
+ }catch(e){multiMsg('OCR could not run: '+e.message+'. Check internet access, or type verified information manually.',true)}
+ finally{if(worker)try{await worker.terminate()}catch(e){}cropWorkerBusy=false}
+}
+function cropUseCorrected(){const t=$('cropRecognized').value.trim();if(!t){multiMsg('No corrected text to use. Type the verified text first.',true);return}$('multiText_'+cropActive).value=t;multiMsg('Corrected '+cropActive+' text ready. When finished, tap Fill medication review fields from corrected label text. Nothing saved to inventory.')}
+function combineMultiText(){
+ // These are human-corrected OCR text fields, not verified medication orders.
+ const fields=[['name','scanMedication'],['strength','scanStrength'],['directions','scanDirections']];
+ let count=0;
+ for(const [section,target] of fields){
+  const value=$('multiText_'+section).value.trim();
+  if(value){$(target).value=value;count++;}
+ }
+ $('scanRaw').value=cropParts.map(k=>'['+k.toUpperCase()+' PHOTO]\n'+$('multiText_'+k).value.trim()).join('\n\n');
+ const d=$('scanRaw').closest('details');if(d)d.open=true;
+ const msg=count?('Filled '+count+' medication REVIEW field'+(count===1?'':'s')+' from your corrected label text. Check all details against the actual label and authorized order. Nothing has been added to the medication inventory.'):('No corrected label text has been entered yet. Use Read selected text, correct the text, and tap Use corrected text for this section.');
+ multiMsg(msg,!count);
+ $('labelTransferStatus').textContent=msg;
+ $('labelTransferStatus').className=count?'good':'warn';
+ if(count)$('scanMedication').scrollIntoView({block:'center',behavior:'smooth'});
+}
+function cropClear(){cropParts.forEach(k=>{if(cropImages[k])cropImages[k].close();cropImages[k]=null;delete cropRects[k];$('multiText_'+k).value=''});$('cropRecognized').value='';$('scanRaw').value='';cropSetSection('name');multiMsg('Photos and scanner review text cleared.')}
+cropSetSection('name');
+window.addEventListener('load',()=>{barcodeLib().catch(()=>{});});
+</script></body></html>
